@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Threshold</title>
+
+<!-- iOS home screen / standalone app behavior -->
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Threshold">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#232A4D">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Track your progress toward IRS material participation hours for your short-term rental.">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">Thresh<em>old</em></div>
+    <span class="offline-pill" id="offline-pill">Offline</span>
+  </div>
+  <div class="main" id="main"></div>
+  <button class="fab" id="fab" aria-label="Add entry">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#232A4D" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+  <div class="tabbar" id="tabbar"></div>
+</div>
+<div id="modal-root"></div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
