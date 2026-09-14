@@ -360,7 +360,20 @@ function renderSettings(){
       <p class="team-role" style="margin:0 0 14px;">Download your full activity log as a CSV, bundled with every photo/PDF attachment, in a ZIP file.</p>
       <button class="btn" id="export-btn" onclick="exportData()">${ICONS.download.replace('currentColor','var(--accent-ink)')} Export data</button>
     </div>
+
+    <h2 class="section-title">Starter <em>data</em></h2>
+    <div class="card">
+      <p class="team-role" style="margin:0 0 14px;">If old placeholder entries are stuck and won't go away, this clears the log on this device and reloads it from your real activity history. Your categories and team stay as you've set them up.</p>
+      <button class="btn btn-secondary" onclick="reloadStarterData()">Reload starter data</button>
+    </div>
   `;
+}
+
+async function reloadStarterData(){
+  if(!confirm('This replaces everything currently logged on this device with your original activity history (the CSV import). Continue?')) return;
+  for(const store of ['entries','people','properties']) await dbClear(store);
+  await loadAll();
+  setView('dashboard');
 }
 
 function csvEscape(v){

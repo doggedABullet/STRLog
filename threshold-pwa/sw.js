@@ -1,4 +1,4 @@
-const CACHE_NAME = 'threshold-v6';
+const CACHE_NAME = 'threshold-v7';
 const ASSETS = [
   './',
   './index.html',
