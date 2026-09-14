@@ -490,7 +490,7 @@ function openEntryModal(id){
       <div class="field"><label>Minutes</label><input type="number" step="1" min="0" max="59" inputmode="numeric" id="f-minutes" value="${existing?(existing.minutes||0):0}"></div>
       <div class="field">
         <label>${ICONS.camera} Supporting documents</label>
-        <input type="file" accept="image/*,application/pdf" capture="environment" multiple id="f-attach">
+        <input type="file" accept="image/*,application/pdf" multiple id="f-attach">
         <div class="file-hint" id="f-attach-hint">Photos, screenshots, or PDFs. Images up to 10MB, PDFs up to 4MB.</div>
         <div class="thumb-row" id="f-attach-preview"></div>
       </div>
