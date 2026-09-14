@@ -14,30 +14,96 @@ const ICONS = {
   user:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>',
   camera:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>',
   inbox:'<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>',
+  settings:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>',
+  download:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  file:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg>',
 };
 
-let state = { view:'dashboard', people:[], properties:[], entries:[], loaded:false };
+let state = { view:'dashboard', people:[], properties:[], entries:[], categories:[], loaded:false };
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+const DEFAULT_CATEGORIES = ['Property Acquisition','Property Design','Legal','Property Development','Property Maintenance','STR License'];
+
+/* Raw rows pulled from the exported activities.csv, used as the starting
+   dataset the first time the app runs. [hours, minutes] are kept separate
+   (matching how they were originally logged) and combined into a decimal
+   total at seed time. */
+const SEED_ROWS = [
+  ['2026-06-20',2,0,'Explored loan options online, spoke to 4 lenders, got quotes.','Chandrashekara Hassan Raju','Alpine View','Property Acquisition'],
+  ['2026-06-22',3,0,'Connected with more lenders to get updated quotes, talked to them about options.','Chandrashekara Hassan Raju','Alpine View','Property Acquisition'],
+  ['2026-06-23',0,45,'Messages exchanged with the realtor to setup house inspection, design teams etc','Chandrashekara Hassan Raju','Alpine View','Property Acquisition'],
+  ['2026-06-24',1,0,'Filled out in-take form with chroma home. Looked for ideas and inspiration for home improvement.','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-06-24',0,30,'Spoke to CPA','Chandrashekara Hassan Raju','Alpine View','Legal'],
+  ['2026-06-24',1,0,'Reviewed the insurance quotes provided by the companies. Spoke to 1 from gooseinsurance to review the coverage and went back to couple others for changes','Chandrashekara Hassan Raju','Alpine View','Property Acquisition'],
+  ['2026-06-24',0,30,'Discussed the policy details and made changes. Discuss the policy changes To get a better quote.','Chandrashekara Hassan Raju','Alpine View','Property Acquisition'],
+  ['2026-06-25',1,0,'An hour long conversation with the design company to understand what they offer, diff options,','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-07-09',0,30,'Met with Chantal to review the next steps for design','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-07-09',0,30,'Jumped on a call with the design company to work on next steps','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-07-15',1,0,'Discuss design and construction with Eve and Victoria','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-07-15',1,0,'STR Design and construction meeting','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-07-15',1,0,'Discuss the priority for the projects while keeping competition in mind','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-07-15',1,0,'Discuss the priority for the projects while keeping competition in mind','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-07-22',2,0,'Meet with Chantal and Eve','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-07-22',2,0,'Meet with Chantal and Eve','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-07-24',1,30,'Discuss landscaping and outdoor amenities construction','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-07-24',1,30,'Discuss landscaping and outdoor amenities construction','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-03',1,0,'Construction cost and design discussion','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-08-03',1,0,'Construction cost and design discussion','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-07',1,30,'Final design review with Eve and Victoria','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-07',1,30,'Final design review with Eve and Victoria','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-08-08',0,45,'Research for hot tub. Tons of reviews, AI consultation, calling stores in Denver including messaging','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-09',0,45,'Continued research for hot tub. Tons of reviews, AI consultation, calling stores in Denver including messaging','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-10',0,30,'Meet with Eli for photo shoot ideas and schedule','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-10',0,30,'Meet with Eli for photo shoot ideas and schedule','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-08-10',1,0,'Call different stores in Denver area looking for a Wellis hot tub.','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-11',2,30,'Sauna research and talking with couple of stores. Emailing back and forth with Eve and Victoria','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-12',2,0,'Exchanged messages with SaunaKits, Eve, spoke with water filtration team. Researched grills for the house. Cube vs Barrel Saunas','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-13',1,0,'Researching tv, grill, communicating back and forth with Eve.','Pallavi R Mangalvedkar','Alpine View','Property Design'],
+  ['2026-08-13',1,0,'Researching tv, grill, communicating back and forth with Eve.','Chandrashekara Hassan Raju','Alpine View','Property Design'],
+  ['2026-08-14',0,56,'Spoke with Victoria over the construction work, pergola, sauna, appliances, etc','Chandrashekara Hassan Raju','Alpine View','Property Development'],
+  ['2026-08-16',0,45,'Looking for sauna builds in the Denver area. Exchanged text messages with sauna friend and another 2 companies who build saunas in Denver area','Chandrashekara Hassan Raju','Alpine View','Property Development'],
+  ['2026-08-17',0,45,'Back and forth with Eve on some of the furnitures, money, and Sauna','Chandrashekara Hassan Raju','Alpine View','Property Development'],
+  ['2026-08-18',0,30,'Call with David from saunafriend. Messages exchanged with Eve.','Chandrashekara Hassan Raju','Alpine View','Property Development'],
+  ['2026-08-21',0,44,'Spoke with Kia from Mountain Magic cleaning company to discuss the job.','Chandrashekara Hassan Raju','Alpine View','Property Maintenance'],
+  ['2026-08-21',0,44,'Spoke with Kia from Mountain Magic cleaning company to discuss the job.','Pallavi R Mangalvedkar','Alpine View','Property Maintenance'],
+  ['2026-08-27',0,25,'Spoke with 365 property solution','Chandrashekara Hassan Raju','Alpine View','Property Maintenance'],
+  ['2026-08-30',1,10,'Reviewed locks and cameras on Amazon, chatGPT','Chandrashekara Hassan Raju','Alpine View','Property Development'],
+  ['2026-09-02',1,15,'Research and spent time on applying for Colorado state tax license','Pallavi R Mangalvedkar','Alpine View','STR License'],
+  ['2026-09-02',1,15,'Research and spent time on applying for Colorado state tax license','Chandrashekara Hassan Raju','Alpine View','STR License'],
+  ['2026-09-03',0,38,'STR license research. Speaking to the lady at the front desk','Chandrashekara Hassan Raju','Alpine View','STR License'],
+  ['2026-09-04',1,0,'Fill up paper work, prints and drive to get the documents notarized','Chandrashekara Hassan Raju','Alpine View','STR License'],
+];
 
 async function seedIfEmpty(){
   const count = await dbCount('entries');
   const peopleCount = await dbCount('people');
+  const catCount = await dbCount('categories');
+
+  if(catCount === 0){
+    for(const name of DEFAULT_CATEGORIES) await dbPut('categories', {id:uid(), name});
+  }
+
   if(count > 0 || peopleCount > 0) return;
+
   const p1 = uid(), p2 = uid(), prop1 = uid();
+  const peopleByName = {'Chandrashekara Hassan Raju':p1, 'Pallavi R Mangalvedkar':p2};
   const people = [
     {id:p1, name:'Chandrashekara Hassan Raju', role:'Primary account holder', email:'chandp24@gmail.com', joinDate:'2026-06-20'},
     {id:p2, name:'Pallavi R Mangalvedkar', role:'Spouse of primary', email:'pmangalvedkar@gmail.com', joinDate:'2026-06-23'}
   ];
   const properties = [{id:prop1, name:'Alpine View'}];
-  const entries = [
-    {id:uid(), date:'2026-07-15', category:'Property design', personId:p2, description:'STR design and construction meeting', propertyId:prop1, hours:1, photo:null},
-    {id:uid(), date:'2026-07-15', category:'Property design', personId:p1, description:'Discuss design and construction with Eve and Victoria', propertyId:prop1, hours:1, photo:null},
-    {id:uid(), date:'2026-07-09', category:'Property design', personId:p1, description:'Review architectural plans with contractor', propertyId:prop1, hours:1, photo:null},
-    {id:uid(), date:'2026-06-28', category:'Guest communication', personId:p1, description:'Respond to guest inquiries and booking questions', propertyId:prop1, hours:2, photo:null},
-    {id:uid(), date:'2026-06-25', category:'Maintenance', personId:p1, description:'Coordinate HVAC repair with technician', propertyId:prop1, hours:3, photo:null},
-    {id:uid(), date:'2026-06-23', category:'Sourcing', personId:p2, description:'Research furniture and decor options', propertyId:prop1, hours:1.5, photo:null},
-    {id:uid(), date:'2026-06-20', category:'Admin', personId:p1, description:'Set up STR Tax Loophole account and property records', propertyId:prop1, hours:3.25, photo:null},
-  ];
+  const entries = SEED_ROWS.map(([date, hrs, mins, description, personName, propertyName, category]) => ({
+    id: uid(),
+    date,
+    category,
+    personId: peopleByName[personName],
+    description,
+    propertyId: prop1,
+    hours: hrs,
+    minutes: mins,
+    photo: null,
+  }));
+
   for(const p of people) await dbPut('people', p);
   for(const p of properties) await dbPut('properties', p);
   for(const e of entries) await dbPut('entries', e);
@@ -48,8 +114,21 @@ async function loadAll(){
   state.people = await dbGetAll('people');
   state.properties = await dbGetAll('properties');
   state.entries = await dbGetAll('entries');
+  state.categories = (await dbGetAll('categories')).sort((a,b)=>a.name.localeCompare(b.name));
   state.loaded = true;
   render();
+}
+
+function entryHours(e){
+  const h = parseFloat(e.hours)||0;
+  const m = parseFloat(e.minutes)||0;
+  return h + m/60;
+}
+function formatHM(e){
+  const h = parseFloat(e.hours)||0;
+  const m = Math.round(parseFloat(e.minutes)||0);
+  if(m>0) return `${h}h ${m}m`;
+  return `${h}h`;
 }
 
 function personName(id){ const p = state.people.find(x=>x.id===id); return p ? p.name : 'Unknown'; }
@@ -58,13 +137,35 @@ function round1(n){ return Math.round(n*10)/10; }
 function startOfWeek(d){ const dt=new Date(d); dt.setDate(dt.getDate()-dt.getDay()); dt.setHours(0,0,0,0); return dt; }
 function escapeHtml(s){ const d=document.createElement('div'); d.innerText=s||''; return d.innerHTML; }
 
+/* ---------- Attachments ---------- */
+const ATTACH_MAX_COUNT = 5;
+const ATTACH_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const ATTACH_MAX_PDF_BYTES = 4 * 1024 * 1024;
+
+function isPdf(type){ return type === 'application/pdf'; }
+function isImage(type){ return type && type.startsWith('image/'); }
+function formatBytes(n){
+  if(n < 1024) return n + ' B';
+  if(n < 1024*1024) return Math.round(n/1024) + ' KB';
+  return (n/(1024*1024)).toFixed(1) + ' MB';
+}
+/* Normalizes an entry's attachments for display/export. Newer entries have
+   an `attachments` array of {id,name,type,size,blob}. Older entries had a
+   single base64 `photo` field — surfaced here as one image attachment so
+   old and new entries render and export the same way. */
+function attachmentsOf(e){
+  if(Array.isArray(e.attachments) && e.attachments.length) return e.attachments;
+  if(e.photo) return [{id:'legacy', name:'photo.jpg', type:'image/jpeg', size:0, dataUrl:e.photo}];
+  return [];
+}
+
 function computeMetrics(){
   const now=new Date(), wkStart=startOfWeek(now);
   const monthStart=new Date(now.getFullYear(), now.getMonth(), 1);
   const yearStart=new Date(now.getFullYear(), 0, 1);
   let week=0, month=0, ytd=0;
   state.entries.forEach(e=>{
-    const d=new Date(e.date+'T00:00:00'); const h=parseFloat(e.hours)||0;
+    const d=new Date(e.date+'T00:00:00'); const h=entryHours(e);
     if(d>=yearStart) ytd+=h;
     if(d>=monthStart) month+=h;
     if(d>=wkStart) week+=h;
@@ -80,6 +181,7 @@ function renderTabbar(){
     {key:'activity', label:'Log', icon:ICONS.activity},
     {key:'properties', label:'Properties', icon:ICONS.properties},
     {key:'team', label:'Team', icon:ICONS.team},
+    {key:'settings', label:'Settings', icon:ICONS.settings},
   ];
   document.getElementById('tabbar').innerHTML = items.map(i=>
     `<button class="tab ${state.view===i.key?'active':''}" onclick="setView('${i.key}')">${i.icon}<span>${i.label}</span></button>`
@@ -96,6 +198,7 @@ function render(){
   else if(state.view==='activity') main.innerHTML=renderActivity();
   else if(state.view==='team') main.innerHTML=renderTeam();
   else if(state.view==='properties') main.innerHTML=renderProperties();
+  else if(state.view==='settings') main.innerHTML=renderSettings();
   document.getElementById('fab').onclick = () => openEntryModal();
 }
 
@@ -109,7 +212,7 @@ function renderDashboard(){
   const met100 = ytd >= 100;
 
   const perPerson = {};
-  state.entries.forEach(e=>{ perPerson[e.personId]=(perPerson[e.personId]||0)+(parseFloat(e.hours)||0); });
+  state.entries.forEach(e=>{ perPerson[e.personId]=(perPerson[e.personId]||0)+entryHours(e); });
   const peopleStats = state.people.map(p=>`
     <div class="ring-stat">
       <div class="ring-stat-label">${escapeHtml(p.name.split(' ')[0])}</div>
@@ -142,6 +245,12 @@ function emptyState(msg){
 }
 
 function entryCard(e){
+  const atts = attachmentsOf(e);
+  const attHtml = atts.length ? `<div class="thumb-row">${atts.map(a=>{
+    const src = a.blob ? URL.createObjectURL(a.blob) : a.dataUrl;
+    if(isImage(a.type)) return `<a href="${src}" target="_blank" rel="noopener"><img class="thumb" src="${src}"></a>`;
+    return `<a href="${src}" target="_blank" rel="noopener" class="file-chip">${ICONS.file}<span>${escapeHtml(a.name)}</span></a>`;
+  }).join('')}</div>` : '';
   return `
     <div class="card">
       <div class="activity-date">${e.date}</div>
@@ -149,9 +258,9 @@ function entryCard(e){
       <div class="activity-person">${personName(e.personId)}</div>
       <div class="activity-desc">${escapeHtml(e.description)}</div>
       <div class="activity-property">${propertyName(e.propertyId)}</div>
-      ${e.photo ? `<div class="thumb-row"><img class="thumb" src="${e.photo}"/></div>` : ''}
+      ${attHtml}
       <div class="activity-bottom">
-        <div class="activity-hours">${e.hours} hrs</div>
+        <div class="activity-hours">${formatHM(e)}</div>
         <div class="row-actions">
           <button class="icon-btn" onclick="openEntryModal('${e.id}')">${ICONS.edit}</button>
           <button class="icon-btn danger" onclick="deleteEntry('${e.id}')">${ICONS.trash}</button>
@@ -170,7 +279,7 @@ function renderActivity(){
 
 function renderTeam(){
   const totals={};
-  state.entries.forEach(e=>{ totals[e.personId]=(totals[e.personId]||0)+(parseFloat(e.hours)||0); });
+  state.entries.forEach(e=>{ totals[e.personId]=(totals[e.personId]||0)+entryHours(e); });
   return `
     <h1 class="page-title">Team</h1>
     <button class="btn btn-secondary" onclick="openPersonModal()" style="margin-bottom:16px;">${ICONS.plus.replace('#fff','currentColor')} Add team member</button>
@@ -201,7 +310,7 @@ function renderProperties(){
     <h1 class="page-title">Properties</h1>
     <button class="btn btn-secondary" onclick="openPropertyModal()" style="margin-bottom:16px;">${ICONS.plus.replace('#fff','currentColor')} Add property</button>
     ${state.properties.map(p=>{
-      const hrs=round1(state.entries.filter(e=>e.propertyId===p.id).reduce((s,e)=>s+(parseFloat(e.hours)||0),0));
+      const hrs=round1(state.entries.filter(e=>e.propertyId===p.id).reduce((s,e)=>s+entryHours(e),0));
       return `
       <div class="card">
         <div class="team-top">
@@ -217,15 +326,142 @@ function renderProperties(){
   `;
 }
 
+function renderSettings(){
+  const catUsage = {};
+  state.entries.forEach(e=>{ catUsage[e.category]=(catUsage[e.category]||0)+1; });
+  return `
+    <h1 class="page-title">Settings</h1>
+    <h2 class="section-title">Manage <em>categories</em></h2>
+    <button class="btn btn-secondary" onclick="openCategoryModal()" style="margin-bottom:16px;">${ICONS.plus.replace('#fff','currentColor')} Add category</button>
+    ${state.categories.map(c=>`
+      <div class="card">
+        <div class="team-top">
+          <p class="team-name">${escapeHtml(c.name)}</p>
+          <div class="row-actions">
+            <button class="icon-btn" onclick="openCategoryModal('${c.id}')">${ICONS.edit}</button>
+            <button class="icon-btn danger" onclick="deleteCategory('${c.id}')">${ICONS.trash}</button>
+          </div>
+        </div>
+        <div class="stat-label" style="margin-top:10px;">${catUsage[c.name]||0} ${catUsage[c.name]===1?'entry':'entries'} logged</div>
+      </div>
+    `).join('') || emptyState('No categories yet.')}
+
+    <h2 class="section-title">Data <em>export</em></h2>
+    <div class="card">
+      <p class="team-role" style="margin:0 0 14px;">Download your full activity log as a CSV, bundled with every photo/PDF attachment, in a ZIP file.</p>
+      <button class="btn" id="export-btn" onclick="exportData()">${ICONS.download.replace('currentColor','var(--accent-ink)')} Export data</button>
+    </div>
+  `;
+}
+
+function csvEscape(v){
+  const s = (v===undefined||v===null) ? '' : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+async function exportData(){
+  const btn = document.getElementById('export-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Preparing export…'; }
+  try{
+    const header = ['Date','Hours','Minutes','Description','Team Member','Property','Category','Attachments'];
+    const sorted = [...state.entries].sort((a,b)=>a.date.localeCompare(b.date));
+    const zip = new JSZip();
+    const attFolder = zip.folder('attachments');
+    const usedNames = new Set();
+
+    const rows = sorted.map(e => {
+      const atts = attachmentsOf(e);
+      const attNames = [];
+      atts.forEach((a, i) => {
+        let name = `${e.date}_${personName(e.personId).split(' ')[0]}_${a.name || ('file'+i)}`;
+        while(usedNames.has(name)) name = `dup_${name}`;
+        usedNames.add(name);
+        attNames.push(name);
+        if(a.blob){
+          attFolder.file(name, a.blob);
+        } else if(a.dataUrl){
+          const base64 = a.dataUrl.split(',')[1];
+          attFolder.file(name, base64, {base64:true});
+        }
+      });
+      return [e.date, e.hours||0, e.minutes||0, e.description, personName(e.personId), propertyName(e.propertyId), e.category, attNames.join('; ')];
+    });
+    const csv = [header, ...rows].map(r => r.map(csvEscape).join(',')).join('\n');
+    zip.file('activity-log.csv', csv);
+
+    const blob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `threshold-export-${new Date().toISOString().slice(0,10)}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(err){
+    alert('Export failed: ' + (err && err.message ? err.message : err));
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Export data'; }
+  }
+}
+
 /* ---------- Modals ---------- */
 function closeModal(){ document.getElementById('modal-root').innerHTML=''; }
 
+function openCategoryModal(id){
+  const existing = id ? state.categories.find(c=>c.id===id) : null;
+  document.getElementById('modal-root').innerHTML = `
+  <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2>${existing?'Edit category':'Add category'}</h2>
+      <div class="field"><label>Category name</label><input id="c-name" value="${existing?escapeHtml(existing.name):''}"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="saveCategory('${existing?existing.id:''}')">${existing?'Save changes':'Add category'}</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveCategory(id){
+  const name=document.getElementById('c-name').value.trim();
+  if(!name){ alert('Please enter a category name.'); return; }
+  const dup = state.categories.find(c=>c.name.toLowerCase()===name.toLowerCase() && c.id!==id);
+  if(dup){ alert('That category already exists.'); return; }
+  const obj = id ? state.categories.find(c=>c.id===id) : {id:uid()};
+  const oldName = obj.name;
+  obj.name = name;
+  await dbPut('categories', obj);
+  if(id && oldName && oldName!==name){
+    const affected = state.entries.filter(e=>e.category===oldName);
+    for(const e of affected){ e.category = name; await dbPut('entries', e); }
+  }
+  await loadAll();
+  closeModal();
+}
+
+async function deleteCategory(id){
+  const cat = state.categories.find(c=>c.id===id);
+  if(!cat) return;
+  const inUse = state.entries.some(e=>e.category===cat.name);
+  if(inUse && !confirm(`"${cat.name}" is used by existing entries. Delete it anyway? Those entries will keep the old category name.`)) return;
+  if(!inUse && !confirm('Delete this category?')) return;
+  await dbDelete('categories', id);
+  await loadAll();
+}
+
 function openEntryModal(id){
   const existing = id ? state.entries.find(e=>e.id===id) : null;
-  const categories=['Property design','Guest communication','Maintenance','Sourcing','Admin','Financial management','Inspection'];
   const peopleOpts = state.people.map(p=>`<option value="${p.id}" ${existing&&existing.personId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
   const propOpts = state.properties.map(p=>`<option value="${p.id}" ${existing&&existing.propertyId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
-  const catOpts = categories.map(c=>`<option ${existing&&existing.category===c?'selected':''}>${c}</option>`).join('');
+  const catNames = state.categories.map(c=>c.name);
+  if(existing && existing.category && !catNames.includes(existing.category)) catNames.push(existing.category);
+  const catOpts = catNames.length
+    ? catNames.map(c=>`<option ${existing&&existing.category===c?'selected':''}>${escapeHtml(c)}</option>`).join('')
+    : '<option disabled>Add a category first, in Settings</option>';
+
+  const existingAtts = existing ? attachmentsOf(existing) : [];
 
   document.getElementById('modal-root').innerHTML = `
   <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
@@ -237,12 +473,13 @@ function openEntryModal(id){
       <div class="field"><label>Work type</label><select id="f-category">${catOpts}</select></div>
       <div class="field"><label>Property</label><select id="f-property">${propOpts || '<option disabled>Add a property first</option>'}</select></div>
       <div class="field"><label>Description</label><textarea id="f-desc">${existing?escapeHtml(existing.description):''}</textarea></div>
-      <div class="field"><label>Hours</label><input type="number" step="0.25" min="0" inputmode="decimal" id="f-hours" value="${existing?existing.hours:''}"></div>
+      <div class="field"><label>Hours</label><input type="number" step="1" min="0" inputmode="numeric" id="f-hours" value="${existing?existing.hours:0}"></div>
+      <div class="field"><label>Minutes</label><input type="number" step="1" min="0" max="59" inputmode="numeric" id="f-minutes" value="${existing?(existing.minutes||0):0}"></div>
       <div class="field">
-        <label>${ICONS.camera} Attachment</label>
-        <input type="file" accept="image/*" capture="environment" id="f-photo">
-        <div class="file-hint">Take a photo or choose from your library.</div>
-        <div class="thumb-row" id="f-photo-preview">${existing&&existing.photo?`<img class="thumb" src="${existing.photo}">`:''}</div>
+        <label>${ICONS.camera} Supporting documents</label>
+        <input type="file" accept="image/*,application/pdf" capture="environment" multiple id="f-attach">
+        <div class="file-hint" id="f-attach-hint">Photos, screenshots, or PDFs. Images up to 10MB, PDFs up to 4MB.</div>
+        <div class="thumb-row" id="f-attach-preview"></div>
       </div>
       <div class="modal-actions">
         <button class="btn" onclick="saveEntry('${existing?existing.id:''}')">${existing?'Save changes':'Add entry'}</button>
@@ -251,18 +488,42 @@ function openEntryModal(id){
     </div>
   </div>`;
 
-  let photoData = existing ? existing.photo : null;
-  document.getElementById('f-photo').addEventListener('change', function(ev){
-    const file = ev.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(){
-      photoData = reader.result;
-      document.getElementById('f-photo-preview').innerHTML = `<img class="thumb" src="${photoData}">`;
-    };
-    reader.readAsDataURL(file);
+  /* Attachments for the entry currently being edited/created, kept in memory
+     until Save. Existing ones carry their id so we know they're already
+     saved; new ones get a fresh id and hold the raw File (a Blob). */
+  let attachments = existingAtts.map(a => a.blob
+    ? {id:a.id, name:a.name, type:a.type, size:a.size, blob:a.blob}
+    : {id:a.id, name:a.name, type:a.type, size:a.size, dataUrl:a.dataUrl}); // legacy photo, kept as-is unless removed
+
+  function renderAttachPreview(){
+    const remaining = ATTACH_MAX_COUNT - attachments.length;
+    document.getElementById('f-attach-hint').textContent =
+      `Photos, screenshots, or PDFs. Images up to 10MB, PDFs up to 4MB — ${Math.max(0,remaining)} slot${remaining===1?'':'s'} remaining.`;
+    document.getElementById('f-attach-preview').innerHTML = attachments.map(a=>{
+      const src = a.blob ? URL.createObjectURL(a.blob) : a.dataUrl;
+      const inner = isImage(a.type)
+        ? `<img class="thumb" src="${src}">`
+        : `<div class="thumb file-thumb">${ICONS.file}</div>`;
+      return `<div class="thumb-wrap">${inner}<button type="button" class="thumb-remove" onclick="removeAttachment('${a.id}')">&times;</button></div>`;
+    }).join('');
+  }
+  window.removeAttachment = (id) => { attachments = attachments.filter(a=>a.id!==id); renderAttachPreview(); };
+
+  document.getElementById('f-attach').addEventListener('change', function(ev){
+    const files = Array.from(ev.target.files || []);
+    ev.target.value = '';
+    for(const file of files){
+      if(attachments.length >= ATTACH_MAX_COUNT){ alert(`You can attach up to ${ATTACH_MAX_COUNT} files per entry.`); break; }
+      const okType = isImage(file.type) || isPdf(file.type);
+      if(!okType){ alert(`${file.name}: only images and PDFs are supported.`); continue; }
+      const limit = isPdf(file.type) ? ATTACH_MAX_PDF_BYTES : ATTACH_MAX_IMAGE_BYTES;
+      if(file.size > limit){ alert(`${file.name} is too large (max ${formatBytes(limit)}).`); continue; }
+      attachments.push({id:uid(), name:file.name, type:file.type, size:file.size, blob:file});
+    }
+    renderAttachPreview();
   });
-  window.__currentPhoto = () => photoData;
+  renderAttachPreview();
+  window.__currentAttachments = () => attachments;
 }
 
 async function saveEntry(id){
@@ -271,13 +532,15 @@ async function saveEntry(id){
   const category=document.getElementById('f-category').value;
   const propertyId=document.getElementById('f-property').value;
   const description=document.getElementById('f-desc').value.trim();
-  const hours=parseFloat(document.getElementById('f-hours').value);
-  if(!date||!personId||!propertyId||!description||isNaN(hours)){
-    alert('Please fill in date, person, property, description, and hours.'); return;
+  const hours=parseFloat(document.getElementById('f-hours').value)||0;
+  const minutes=parseFloat(document.getElementById('f-minutes').value)||0;
+  if(!date||!personId||!propertyId||!description||(hours===0&&minutes===0)){
+    alert('Please fill in date, person, property, description, and hours or minutes.'); return;
   }
-  const photo = window.__currentPhoto ? window.__currentPhoto() : null;
+  const photo = null; // superseded by `attachments`; kept only so legacy readers don't error
+  const attachments = window.__currentAttachments ? window.__currentAttachments() : [];
   const obj = id ? state.entries.find(e=>e.id===id) : {id:uid()};
-  Object.assign(obj, {date, personId, category, propertyId, description, hours, photo});
+  Object.assign(obj, {date, personId, category, propertyId, description, hours, minutes, photo, attachments});
   await dbPut('entries', obj);
   await loadAll();
   closeModal();

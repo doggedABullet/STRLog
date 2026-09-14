@@ -1,4 +1,4 @@
-const CACHE_NAME = 'threshold-v1';
+const CACHE_NAME = 'threshold-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const ASSETS = [
   './db.js',
   './app.js',
   './manifest.json',
+  './vendor/jszip.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png'

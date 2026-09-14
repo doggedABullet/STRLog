@@ -1,8 +1,19 @@
 /* Real on-device database using IndexedDB. Survives app restarts,
-   works fully offline, and holds far more data than localStorage. */
+   works fully offline, and holds far more data than localStorage.
+   Attachments (photos/PDFs) are stored as Blobs directly in the
+   'entries' records, not as base64 text, to keep storage compact. */
 const DB_NAME = 'strTaxLoophole';
-const DB_VERSION = 1;
-const STORES = ['entries', 'people', 'properties'];
+const DB_VERSION = 2;
+const STORES = ['entries', 'people', 'properties', 'categories'];
+
+/* iOS Safari can otherwise clear IndexedDB after a period of inactivity.
+   Requesting persistence (works for home-screen-installed PWAs) asks the
+   browser not to evict this data under storage pressure. This is best-effort:
+   the browser may still say no, and it doesn't matter for a page loaded
+   over plain https vs. installed to the home screen. */
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
+}
 
 let dbPromise = null;
 
