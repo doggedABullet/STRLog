@@ -133,6 +133,15 @@ function formatHM(e){
 
 function personName(id){ const p = state.people.find(x=>x.id===id); return p ? p.name : 'Unknown'; }
 function propertyName(id){ const p = state.properties.find(x=>x.id===id); return p ? p.name : 'Unknown'; }
+/* Newer entries store personIds (array, supports multiple participants on
+   one entry). Older entries had a single personId — this normalizes both
+   so display/aggregation code only needs to handle one shape. */
+function personIdsOf(e){
+  if(Array.isArray(e.personIds) && e.personIds.length) return e.personIds;
+  if(e.personId) return [e.personId];
+  return [];
+}
+function personNamesOf(e){ return personIdsOf(e).map(personName).join(', ') || 'Unknown'; }
 function round1(n){ return Math.round(n*10)/10; }
 function startOfWeek(d){ const dt=new Date(d); dt.setDate(dt.getDate()-dt.getDay()); dt.setHours(0,0,0,0); return dt; }
 function escapeHtml(s){ const d=document.createElement('div'); d.innerText=s||''; return d.innerHTML; }
@@ -212,7 +221,7 @@ function renderDashboard(){
   const met100 = ytd >= 100;
 
   const perPerson = {};
-  state.entries.forEach(e=>{ perPerson[e.personId]=(perPerson[e.personId]||0)+entryHours(e); });
+  state.entries.forEach(e=>{ personIdsOf(e).forEach(pid=>{ perPerson[pid]=(perPerson[pid]||0)+entryHours(e); }); });
   const peopleStats = state.people.map(p=>`
     <div class="ring-stat">
       <div class="ring-stat-label">${escapeHtml(p.name.split(' ')[0])}</div>
@@ -255,7 +264,7 @@ function entryCard(e){
     <div class="card">
       <div class="activity-date">${e.date}</div>
       <div class="tag">${e.category}</div>
-      <div class="activity-person">${personName(e.personId)}</div>
+      <div class="activity-person">${escapeHtml(personNamesOf(e))}</div>
       <div class="activity-desc">${escapeHtml(e.description)}</div>
       <div class="activity-property">${propertyName(e.propertyId)}</div>
       ${attHtml}
@@ -279,7 +288,7 @@ function renderActivity(){
 
 function renderTeam(){
   const totals={};
-  state.entries.forEach(e=>{ totals[e.personId]=(totals[e.personId]||0)+entryHours(e); });
+  state.entries.forEach(e=>{ personIdsOf(e).forEach(pid=>{ totals[pid]=(totals[pid]||0)+entryHours(e); }); });
   return `
     <h1 class="page-title">Team</h1>
     <button class="btn btn-secondary" onclick="openPersonModal()" style="margin-bottom:16px;">${ICONS.plus.replace('#fff','currentColor')} Add team member</button>
@@ -372,8 +381,9 @@ async function exportData(){
     const rows = sorted.map(e => {
       const atts = attachmentsOf(e);
       const attNames = [];
+      const firstPerson = (personName(personIdsOf(e)[0]) || 'entry').split(' ')[0];
       atts.forEach((a, i) => {
-        let name = `${e.date}_${personName(e.personId).split(' ')[0]}_${a.name || ('file'+i)}`;
+        let name = `${e.date}_${firstPerson}_${a.name || ('file'+i)}`;
         while(usedNames.has(name)) name = `dup_${name}`;
         usedNames.add(name);
         attNames.push(name);
@@ -384,7 +394,7 @@ async function exportData(){
           attFolder.file(name, base64, {base64:true});
         }
       });
-      return [e.date, e.hours||0, e.minutes||0, e.description, personName(e.personId), propertyName(e.propertyId), e.category, attNames.join('; ')];
+      return [e.date, e.hours||0, e.minutes||0, e.description, personNamesOf(e), propertyName(e.propertyId), e.category, attNames.join('; ')];
     });
     const csv = [header, ...rows].map(r => r.map(csvEscape).join(',')).join('\n');
     zip.file('activity-log.csv', csv);
@@ -453,7 +463,10 @@ async function deleteCategory(id){
 
 function openEntryModal(id){
   const existing = id ? state.entries.find(e=>e.id===id) : null;
-  const peopleOpts = state.people.map(p=>`<option value="${p.id}" ${existing&&existing.personId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+  const existingPersonIds = existing ? personIdsOf(existing) : [];
+  const peopleChecklist = state.people.length
+    ? state.people.map(p=>`<label class="check-row"><input type="checkbox" value="${p.id}" ${existingPersonIds.includes(p.id)?'checked':''}> ${escapeHtml(p.name)}</label>`).join('')
+    : '<div class="file-hint">Add a team member first, under Team.</div>';
   const propOpts = state.properties.map(p=>`<option value="${p.id}" ${existing&&existing.propertyId===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
   const catNames = state.categories.map(c=>c.name);
   if(existing && existing.category && !catNames.includes(existing.category)) catNames.push(existing.category);
@@ -469,7 +482,7 @@ function openEntryModal(id){
       <div class="modal-handle"></div>
       <h2>${existing?'Edit entry':'Add a new entry'}</h2>
       <div class="field"><label>Date</label><input type="date" id="f-date" value="${existing?existing.date:new Date().toISOString().slice(0,10)}"></div>
-      <div class="field"><label>Person</label><select id="f-person">${peopleOpts || '<option disabled>Add a team member first</option>'}</select></div>
+      <div class="field"><label>Team members</label><div class="checklist" id="f-people">${peopleChecklist}</div></div>
       <div class="field"><label>Work type</label><select id="f-category">${catOpts}</select></div>
       <div class="field"><label>Property</label><select id="f-property">${propOpts || '<option disabled>Add a property first</option>'}</select></div>
       <div class="field"><label>Description</label><textarea id="f-desc">${existing?escapeHtml(existing.description):''}</textarea></div>
@@ -528,19 +541,20 @@ function openEntryModal(id){
 
 async function saveEntry(id){
   const date=document.getElementById('f-date').value;
-  const personId=document.getElementById('f-person').value;
+  const personIds=Array.from(document.querySelectorAll('#f-people input[type=checkbox]:checked')).map(el=>el.value);
   const category=document.getElementById('f-category').value;
   const propertyId=document.getElementById('f-property').value;
   const description=document.getElementById('f-desc').value.trim();
   const hours=parseFloat(document.getElementById('f-hours').value)||0;
   const minutes=parseFloat(document.getElementById('f-minutes').value)||0;
-  if(!date||!personId||!propertyId||!description||(hours===0&&minutes===0)){
-    alert('Please fill in date, person, property, description, and hours or minutes.'); return;
+  if(!date||!personIds.length||!propertyId||!description||(hours===0&&minutes===0)){
+    alert('Please fill in date, at least one team member, property, description, and hours or minutes.'); return;
   }
   const photo = null; // superseded by `attachments`; kept only so legacy readers don't error
   const attachments = window.__currentAttachments ? window.__currentAttachments() : [];
   const obj = id ? state.entries.find(e=>e.id===id) : {id:uid()};
-  Object.assign(obj, {date, personId, category, propertyId, description, hours, minutes, photo, attachments});
+  delete obj.personId; // replaced by personIds
+  Object.assign(obj, {date, personIds, category, propertyId, description, hours, minutes, photo, attachments});
   await dbPut('entries', obj);
   await loadAll();
   closeModal();
@@ -628,6 +642,14 @@ window.addEventListener('offline', render);
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+  // Once a new version activates and takes control, reload once to pick it
+  // up. IndexedDB data isn't touched by this — only the cached code changes.
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(reloaded) return;
+    reloaded = true;
+    window.location.reload();
   });
 }
 loadAll();
